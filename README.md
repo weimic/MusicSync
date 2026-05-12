@@ -1,4 +1,4 @@
-# MusicScraper
+# MusicSync
 
 I have two of the same playlists on Spotify and Apple Music, but keeping them 
 equally updated is a pain. This is a personal tool I use to fix that issue. 
