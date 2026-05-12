@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}MusicScraper - new diff{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1>Compare your playlists</h1>
+  <p class="subtitle">
+    Drop in a Spotify playlist export and an Apple Music shared link.
+    You'll get back a side-by-side diff: matched tracks, what's only on
+    one service, ambiguous near-matches, and any duplicates inside each
+    playlist.
+  </p>
+
+  {% if errors %}
+    {% for error in errors %}
+      <div class="error">{{ error }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <form id="diff-form" method="post" action="{{ url_for('main.run_diff') }}"
+        enctype="multipart/form-data">
+    <div class="field">
+      <label for="apple_url">Apple Music shared playlist URL</label>
+      <input id="apple_url" name="apple_url" type="url" required
+             placeholder="https://music.apple.com/us/playlist/..."
+             value="{{ apple_url or '' }}">
+      <span class="hint">
+        In Apple Music, open the playlist's settings, enable
+        <em>Public Playlist</em>, then Share &rarr; Copy Link.
+      </span>
+    </div>
+
+    <div class="field">
+      <label for="spotify_csv">Spotify playlist CSV (Exportify)</label>
+      <input id="spotify_csv" name="spotify_csv" type="file"
+             accept=".csv,text/csv" required>
+      <span class="hint">
+        Export your Spotify playlist at
+        <a href="https://exportify.app/" target="_blank" rel="noreferrer noopener">
+          exportify.app</a>. Free Spotify accounts work; no Premium needed.
+      </span>
+    </div>
+
+    <div class="row" style="justify-content: space-between; gap: 16px;">
+      <button id="submit-btn" class="primary" type="submit">
+        Run diff
+      </button>
+      <span id="status" class="status">
+        Fetching playlists - this can take 5-15 seconds&hellip;
+      </span>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Tiny progressive enhancement: when the form is submitted, disable the
+  // button and show a status line so the user knows the request is running
+  // (the diff itself is synchronous on the server and can take ~10s).
+  (function () {
+    var form = document.getElementById('diff-form');
+    if (!form) return;
+    form.addEventListener('submit', function () {
+      var btn = document.getElementById('submit-btn');
+      var status = document.getElementById('status');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Working\u2026';
+      }
+      if (status) {
+        status.classList.add('visible');
+      }
+    });
+  })();
+</script>
+{% endblock %}

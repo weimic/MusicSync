@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MusicScraper{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page">
+    <header class="site">
+      <a href="{{ url_for('main.index') }}" class="brand">MusicScraper</a>
+      <span class="tagline">Apple Music &amp; Spotify playlist diff</span>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <footer class="site">
+      <span>Local tool. Inputs and results never leave this machine.</span>
+      <span>v0.1</span>
+    </footer>
+  </div>
+</body>
+</html>

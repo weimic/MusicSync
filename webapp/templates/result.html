@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}MusicScraper - diff result{% endblock %}
+
+{% macro fmt_duration(ms) -%}
+{%- if ms is none -%}-{%- else -%}
+{%- set s = ms // 1000 -%}
+{{ s // 60 }}:{{ '%02d' % (s % 60) }}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro track_table(tracks, empty_message) -%}
+  {% if tracks %}
+    <table class="tracks">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Artists</th>
+          <th>Album</th>
+          <th class="num">Duration</th>
+          <th class="dim">ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tracks %}
+          <tr>
+            <td>{{ t.title }}</td>
+            <td>{{ t.artists | join(', ') }}</td>
+            <td class="dim">{{ t.album or '' }}</td>
+            <td class="num">{{ fmt_duration(t.duration_ms) }}</td>
+            <td class="dim"><code style="font-size: 11px;">{{ t.source_id or '' }}</code></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">{{ empty_message }}</p>
+  {% endif %}
+{%- endmacro %}
+
+{% macro ambiguous_table(cases) -%}
+  {% if cases %}
+    <table class="tracks">
+      <thead>
+        <tr>
+          <th>Apple track</th>
+          <th>Spotify candidates</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for case in cases %}
+          <tr>
+            <td>
+              <strong>{{ case.apple.title }}</strong><br>
+              <span class="dim" style="font-size: 12px;">
+                {{ case.apple.artists | join(', ') }}
+                {% if case.apple.album %} | {{ case.apple.album }}{% endif %}
+                | {{ fmt_duration(case.apple.duration_ms) }}
+              </span>
+            </td>
+            <td>
+              <ul style="margin: 0; padding-left: 18px;">
+                {% for c in case.candidates %}
+                  <li>
+                    <strong>{{ c.title }}</strong>
+                    <span class="dim" style="font-size: 12px;">
+                      ({{ c.artists | join(', ') }})
+                      {% if c.album %} [{{ c.album }}]{% endif %}
+                      - {{ fmt_duration(c.duration_ms) }}
+                    </span>
+                  </li>
+                {% endfor %}
+              </ul>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty">No ambiguous matches - every Apple track resolved to a single Spotify candidate (or to none).</p>
+  {% endif %}
+{%- endmacro %}
+
+{% macro duplicate_section(report, label) -%}
+  {% set total = report.by_isrc | length + report.by_title_artist | length %}
+  <details class="section">
+    <summary>
+      <span>Duplicates within {{ label }}</span>
+      <span class="badge">{{ total }}</span>
+    </summary>
+    <div class="body">
+      {% if total == 0 %}
+        <p class="empty">No duplicates detected.</p>
+      {% else %}
+        {% if report.by_isrc %}
+          <div class="dup-group">
+            <h2 style="margin: 4px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">
+              Same ISRC ({{ report.by_isrc | length }})
+            </h2>
+          </div>
+          {% for group in report.by_isrc %}
+            <div class="dup-group">
+              <div class="key">ISRC: {{ group.key }}</div>
+              <ul>
+                {% for t in group.tracks %}
+                  <li>
+                    {{ t.title }}
+                    <span class="meta">- {{ t.artists | join(', ') }}
+                      {% if t.album %} | {{ t.album }}{% endif %}
+                      | ID: {{ t.source_id or '-' }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endfor %}
+        {% endif %}
+        {% if report.by_title_artist %}
+          <div class="dup-group">
+            <h2 style="margin: 4px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);">
+              Same normalized title + artist ({{ report.by_title_artist | length }})
+            </h2>
+          </div>
+          {% for group in report.by_title_artist %}
+            <div class="dup-group">
+              <div class="key">{{ group.key }}</div>
+              <ul>
+                {% for t in group.tracks %}
+                  <li>
+                    {{ t.title }}
+                    <span class="meta">- {{ t.artists | join(', ') }}
+                      {% if t.album %} | {{ t.album }}{% endif %}
+                      | ID: {{ t.source_id or '-' }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endif %}
+    </div>
+  </details>
+{%- endmacro %}
+
+{% block content %}
+<div class="result-header">
+  <div class="meta">
+    <div><strong>Spotify CSV:</strong> {{ stored.spotify_filename }} ({{ stored.spotify_track_count }} tracks)</div>
+    <div><strong>Apple Music URL:</strong>
+      <span class="truncate" title="{{ stored.apple_url }}">{{ stored.apple_url }}</span>
+      ({{ stored.apple_track_count }} tracks)
+    </div>
+  </div>
+  <div style="display: flex; gap: 8px; flex-shrink: 0;">
+    <a class="button ghost" href="{{ url_for('main.index') }}">New diff</a>
+    <a class="button primary" href="{{ url_for('main.download_csv', diff_id=diff_id) }}">
+      Download diff.csv
+    </a>
+  </div>
+</div>
+
+<div class="counters">
+  <div class="counter good">
+    <span class="n">{{ result.matched | length }}</span>
+    <span class="l">Matched</span>
+  </div>
+  <div class="counter bad">
+    <span class="n">{{ result.only_spotify | length }}</span>
+    <span class="l">Only Spotify</span>
+  </div>
+  <div class="counter bad">
+    <span class="n">{{ result.only_apple | length }}</span>
+    <span class="l">Only Apple</span>
+  </div>
+  <div class="counter warn">
+    <span class="n">{{ result.ambiguous | length }}</span>
+    <span class="l">Ambiguous</span>
+  </div>
+  <div class="counter warn">
+    <span class="n">{{ spotify_dupes.by_isrc | length + spotify_dupes.by_title_artist | length }}</span>
+    <span class="l">Spotify dupes</span>
+  </div>
+  <div class="counter warn">
+    <span class="n">{{ apple_dupes.by_isrc | length + apple_dupes.by_title_artist | length }}</span>
+    <span class="l">Apple dupes</span>
+  </div>
+</div>
+
+<details class="section" open>
+  <summary>
+    <span>Only in Apple Music</span>
+    <span class="badge">{{ result.only_apple | length }}</span>
+  </summary>
+  <div class="body">
+    {{ track_table(result.only_apple, "Every Apple Music track was found on Spotify.") }}
+  </div>
+</details>
+
+<details class="section">
+  <summary>
+    <span>Only in Spotify</span>
+    <span class="badge">{{ result.only_spotify | length }}</span>
+  </summary>
+  <div class="body">
+    {{ track_table(result.only_spotify, "Every Spotify track was found on Apple Music.") }}
+  </div>
+</details>
+
+<details class="section">
+  <summary class="{% if result.ambiguous %}warn{% endif %}">
+    <span>Ambiguous (cross-service)</span>
+    <span class="badge">{{ result.ambiguous | length }}</span>
+  </summary>
+  <div class="body">
+    {{ ambiguous_table(result.ambiguous) }}
+  </div>
+</details>
+
+{{ duplicate_section(spotify_dupes, "your Spotify playlist") }}
+{{ duplicate_section(apple_dupes, "your Apple Music playlist") }}
+
+<details class="section">
+  <summary>
+    <span>Matched</span>
+    <span class="badge">{{ result.matched | length }}</span>
+  </summary>
+  <div class="body">
+    {% if result.matched %}
+      <table class="tracks">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Artists</th>
+            <th>Spotify album</th>
+            <th>Apple album</th>
+            <th class="num">Duration</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pair in result.matched %}
+            <tr>
+              <td>{{ pair.apple.title }}</td>
+              <td>{{ (pair.apple.artists or pair.spotify.artists) | join(', ') }}</td>
+              <td class="dim">{{ pair.spotify.album or '' }}</td>
+              <td class="dim">{{ pair.apple.album or '' }}</td>
+              <td class="num">{{ fmt_duration(pair.apple.duration_ms) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">No matches yet.</p>
+    {% endif %}
+  </div>
+</details>
+{% endblock %}
