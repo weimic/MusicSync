@@ -1,5 +1,9 @@
 # MusicScraper
 
+I have two of the same playlists on Spotify and Apple Music, but keeping them 
+equally updated is a pain. This is a personal tool I use to fix that issue. 
+Figured I would put this into a repo to see if anyone else could use it.
+
 A small Python CLI that compares a **Spotify playlist** with a **shared
 Apple Music playlist** and shows you the mismatches: which tracks live in one
 service but not the other, plus any cases the tool refuses to silently guess
