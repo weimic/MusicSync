@@ -25,7 +25,7 @@ def _force_utf8_stdio() -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="webapp",
-        description="Run the MusicScraper web UI locally.",
+        description="Run the MusicSync web UI locally.",
     )
     parser.add_argument("--host", default="127.0.0.1", help="Bind host. Default: 127.0.0.1")
     parser.add_argument("--port", type=int, default=5000, help="Bind port. Default: 5000")

@@ -1,4 +1,4 @@
-"""HTTP routes for the MusicScraper web UI.
+"""HTTP routes for the MusicSync web UI.
 
 The diff pipeline is invoked synchronously inside ``POST /diff``. For the
 tool's local-personal-use scope this is appropriate: total wall clock for a
